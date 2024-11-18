@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Editor } from "@monaco-editor/react";
 
-const codeEditorWindow = ({ onChange, language, code, theme }) => {
-    const [value, setvalue] = useState(code || "");
+const CodeEditorWindow = ({ onChange, language, code, theme }) => {
+    const [value, setValue] = useState(code || "");
 
     const handleEditorChange = (value) => {
-        setvalue(value);
+        setValue(value);
         onChange("code", value);
     };
 
@@ -25,4 +25,4 @@ const codeEditorWindow = ({ onChange, language, code, theme }) => {
     );
 }
 
-export default codeEditorWindow;
+export default CodeEditorWindow;
