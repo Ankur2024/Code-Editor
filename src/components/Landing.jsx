@@ -2,7 +2,7 @@ import { useState, useEffect, act } from "react";
 import CodeEditorWindow from "./CodeEditorWindow.jsx";
 import { languageOptions } from "../constants/LanguageOptions.jsx";
 import { ToastContainer, toast } from "react-toastify";
-
+import axios from "axios";
 
 const javascriptDefault = `//** some comment **//`;
 
@@ -43,20 +43,78 @@ const Landing = () => {
   };
 
   const handleCompile = () => {
-    // We will come to the implementation later in the code
+    setProcessing(true);
+    const formData = {
+      language_id: language.id,
+      source_code: btoa(code),
+      stdin: btoa(customInput),
+    };
+    const options = {
+      method: "POST",
+      url: process.env.REACT_APP_RAPID_API_URL,
+      params: { base64_encoded: "true", fields: "*" },
+      headers: {
+        "content-type": "application/json",
+        "Content-Type": "application/json",
+        "X-RapidAPI-Host": process.env.REACT_APP_RAPID_API_HOST,
+        "X-RapidAPI-Key": process.env.REACT_APP_RAPID_API_KEY,
+      },
+      data: formData,
+    };
+    axios
+      .request(options)
+      .then(function (res) {
+        console.log("res.data", res.data);
+        const token = res.data.token;
+        checkStatus(token);
+      })
+      .catch((err) => {
+        let error = err.response ? err.response.data : err;
+        setProcessing(false);
+        console.log(error);
+      });
   };
 
   const checkStatus = async (token) => {
-    // We will come to the implementation later in the code
+    const options = {
+      method: "GET",
+      url: process.env.REACT_APP_RAPID_API_URL + "/" + token,
+      params: { base64_encoded: "true", fields: "*" },
+      headers: {
+        "X-RapidAPI-Host": process.env.REACT_APP_RAPID_API_HOST,
+        "X-RapidAPI-Key": process.env.REACT_APP_RAPID_API_KEY,
+      },
+    };
+    try {
+      let response = await axios.request(options);
+      let statusId = response.data.status?.id;
+
+      if (statusId === 1 || statusId === 2) {
+        setTimeout(() => {
+          checkStatus(token);
+        }, 2000);
+        return;
+      } else {
+        setProcessing(false);
+        setOutputDetails(response.data);
+        showSuccessToast(`Compiled Successfully!`);
+        console.log("response.data", response.data);
+        return;
+      }
+    } catch (err) {
+      console.log("err", err);
+      setProcessing(false);
+      showErrorToast();
+    }
   };
 
   function handleThemeChange(th) {
     const theme = th;
     console.log("theme...", theme);
-    if(["light", "vs-dark"].includes(theme.value)){
-        setTheme(theme);
-    }else {
-        defineTheme(theme.value).then((_) => setTheme(theme));
+    if (["light", "vs-dark"].includes(theme.value)) {
+      setTheme(theme);
+    } else {
+      defineTheme(theme.value).then((_) => setTheme(theme));
     }
   }
 
