@@ -5,10 +5,11 @@ import Landing from "./components/Landing";
 function App() {
   const [count, setCount] = useState(0);
 
-  return 
-  <>
-    <Landing />
-  </>;
+  return (
+    <>
+      <Landing />
+    </>
+  );
 }
 
 export default App;
