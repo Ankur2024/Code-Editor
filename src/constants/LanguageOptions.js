@@ -1,4 +1,4 @@
-export const languageOptions = [
+const LanguageOptions = [
     {
       id: 63,
       name: "JavaScript (Node.js 12.14.0)",
@@ -278,3 +278,5 @@ export const languageOptions = [
       value: "vbnet",
     },
   ];
+  
+export default LanguageOptions;

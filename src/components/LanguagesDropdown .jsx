@@ -1,15 +1,15 @@
 import React from "react";
 import Select from "react-select";
 import { customStyles } from "../constants/CustomStyles.js";
-import { languageOptions } from "../constants/LanguageOptions.js";
+import LanguageOptions from "../constants/LanguageOptions.js";
 
 const LanguagesDropdown = ({ onSelectChange }) => {
   return (
     <Select
       placeholder={`Filter By Category`}
-      options={languageOptions}
+      options={LanguageOptions}
       styles={customStyles}
-      defaultValue={languageOptions[0]}
+      defaultValue={LanguageOptions[0]}
       onChange={(selectedOption) => onSelectChange(selectedOption)}
     />
   );
