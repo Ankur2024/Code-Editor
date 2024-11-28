@@ -44,4 +44,4 @@ const OutputWindow = ({ outputDetails }) => {
     )
 };
 
-export default OutputWindow
+export default OutputWindow;

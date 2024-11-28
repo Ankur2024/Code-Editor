@@ -49,200 +49,166 @@ const Landing = () => {
   const [code, setCode] = useState(javascriptDefault);
   const [customInput, setCustomInput] = useState("");
   const [outputDetails, setOutputDetails] = useState(null);
-  const [processing, setProcessing] = useState(null);
+  const [processing, setProcessing] = useState(false);
   const [theme, setTheme] = useState("cobalt");
   const [language, setLanguage] = useState(LanguageOptions[0]);
 
   const apiUrl = import.meta.env.VITE_RAPID_API_URL;
   const apiHost = import.meta.env.VITE_RAPID_API_HOST;
   const apiKey = import.meta.env.VITE_RAPID_API_KEY;
+  
+  console.log("API URL:", apiUrl);
+  console.log("API Host:", apiHost);
+  console.log("API Key:", apiKey);
 
   const enterPress = useKeyPress("Enter");
   const ctrlPress = useKeyPress("Control");
 
   const onSelectChange = (sl) => {
-    console.log("selected Option...", sl);
+    console.log("Selected Language:", sl);
     setLanguage(sl);
   };
 
   useEffect(() => {
+    console.log("Key press detected - Enter:", enterPress, "Ctrl:", ctrlPress);
     if (enterPress && ctrlPress) {
-      console.log("enterPress", enterPress);
-      console.log("ctrlPress", ctrlPress);
       handleCompile();
     }
   }, [ctrlPress, enterPress]);
+
   const onChange = (action, data) => {
-    switch (action) {
-      case "code": {
-        setCode(data);
-        break;
-      }
-      default: {
-        console.warn("case not handled!", action, data);
-      }
-    }
+    console.log("Action:", action, "Data:", data);
+    if (action === "code") setCode(data);
   };
+
   const handleCompile = () => {
+    console.log("Compiling with language:", language);
+    if (!language?.id) {
+      showErrorToast("Please select a valid language!");
+      return;
+    }
+
     setProcessing(true);
     const formData = {
       language_id: language.id,
       source_code: btoa(code),
       stdin: btoa(customInput),
     };
-    const options = {
-      method: "POST",
-      url: apiUrl,
-      params: { base64_encoded: "true", fields: "*" },
-      headers: {
-        "content-type": "application/json",
-        "Content-Type": "application/json",
-        "X-RapidAPI-Host": process.env.REACT_APP_RAPID_API_HOST,
-        "X-RapidAPI-Key": process.env.REACT_APP_RAPID_API_KEY,
-      },
-      data: formData,
-    };
+
+    console.log("Form Data:", formData);
 
     axios
-      .request(options)
-      .then(function (response) {
-        console.log("res.data", response.data);
-        const token = response.data.token;
-        checkStatus(token);
+      .post(`${apiUrl}/submissions`, formData, {
+        params: { base64_encoded: "true", fields: "*" },
+        headers: {
+          "content-type": "application/json",
+          "X-RapidAPI-Host": apiHost,
+          "X-RapidAPI-Key": apiKey,
+        },
+      })
+      .then((response) => {
+        console.log("Compile Response:", response);
+        if (response.data.token) {
+          checkStatus(response.data.token);
+        } else {
+          throw new Error("Token not received from the API");
+        }
       })
       .catch((err) => {
-        let error = err.response ? err.response.data : err;
-        // get error status
-        let status = err.response.status;
-        console.log("status", status);
-        if (status === 429) {
-          console.log("too many requests", status);
+        const status = err.response?.status;
+        const error = err.response?.data || err.message;
 
+        console.error("Compilation Error:", status, error);
+
+        if (status === 429) {
           showErrorToast(
-            `Quota of 100 requests exceeded for the Day! Please read the blog on freeCodeCamp to learn how to setup your own RAPID API Judge0!`,
+            "Quota exceeded! Please read the documentation to set up your own API key.",
             10000
           );
+        } else {
+          showErrorToast(`Compilation failed: ${error.message || "Please check your code"}`);
         }
         setProcessing(false);
-        console.log("catch block...", error);
       });
   };
 
   const checkStatus = async (token) => {
-    const options = {
-      method: "GET",
-      url: apiUrl + "/" + token,
-      params: { base64_encoded: "true", fields: "*" },
-      headers: {
-        "X-RapidAPI-Host": apiHost,
-        "X-RapidAPI-Key": apiKey,
-      },
-    };
+    console.log("Checking Status for Token:", token);
     try {
-      let response = await axios.request(options);
-      let statusId = response.data.status?.id;
+      const response = await axios.get(`${apiUrl}/submissions/${token}`, {
+        params: { base64_encoded: "true", fields: "*" },
+        headers: {
+          "X-RapidAPI-Host": apiHost,
+          "X-RapidAPI-Key": apiKey,
+        },
+      });
+
+      console.log("Status Response:", response);
+
+      const statusId = response.data?.status?.id;
 
       if (statusId === 1 || statusId === 2) {
-        setTimeout(() => {
-          checkStatus(token);
-        }, 2000);
-        return;
+        console.log("Status is in progress. Retrying...");
+        setTimeout(() => checkStatus(token), 2000);
       } else {
         setProcessing(false);
         setOutputDetails(response.data);
-        showSuccessToast(`Compiled Successfully!`);
-        console.log("response.data", response.data);
-        return;
+        console.log("Output Details:", response.data);
+        if (statusId === 3) {
+          showSuccessToast("Compiled Successfully!");
+        } else {
+          showErrorToast("Compilation failed!");
+        }
       }
     } catch (err) {
-      console.log("err", err);
+      console.error("Status Check Error:", err);
       setProcessing(false);
-      showErrorToast();
+      showErrorToast("Error checking submission status");
     }
   };
 
   function handleThemeChange(th) {
-    const theme = th;
-    console.log("theme...", theme);
-
-    if (["light", "vs-dark"].includes(theme.value)) {
-      setTheme(theme);
+    console.log("Theme Change:", th);
+    if (["light", "vs-dark"].includes(th.value)) {
+      setTheme(th);
     } else {
-      defineTheme(theme.value).then((_) => setTheme(theme));
+      defineTheme(th.value).then(() => setTheme(th));
     }
   }
+
   useEffect(() => {
-    defineTheme("oceanic-next").then((_) =>
+    defineTheme("oceanic-next").then(() =>
       setTheme({ value: "oceanic-next", label: "Oceanic Next" })
     );
   }, []);
 
   const showSuccessToast = (msg) => {
-    toast.success(msg || `Compiled Successfully!`, {
+    console.log("Success Toast:", msg);
+    toast.success(msg || "Compiled Successfully!", {
       position: "top-right",
       autoClose: 1000,
       hideProgressBar: false,
       closeOnClick: true,
       pauseOnHover: true,
       draggable: true,
-      progress: undefined,
     });
   };
+
   const showErrorToast = (msg, timer) => {
-    toast.error(msg || `Something went wrong! Please try again.`, {
+    console.error("Error Toast:", msg);
+    toast.error(msg || "Something went wrong! Please try again.", {
       position: "top-right",
-      autoClose: timer ? timer : 1000,
+      autoClose: timer || 1000,
       hideProgressBar: false,
       closeOnClick: true,
       pauseOnHover: true,
       draggable: true,
-      progress: undefined,
     });
   };
 
   return (
     <>
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-
-      <a
-        href="https://github.com/manuarora700/react-code-editor"
-        title="Fork me on GitHub"
-        className="github-corner"
-        target="_blank"
-        rel="noreferrer"
-      >
-        <svg
-          width="50"
-          height="50"
-          viewBox="0 0 250 250"
-          className="relative z-20 h-20 w-20"
-        >
-          <title>Fork me on GitHub</title>
-          <path d="M0 0h250v250"></path>
-          <path
-            d="M127.4 110c-14.6-9.2-9.4-19.5-9.4-19.5 3-7 1.5-11 1.5-11-1-6.2 3-2 3-2 4 4.7 2 11 2 11-2.2 10.4 5 14.8 9 16.2"
-            fill="currentColor"
-            style={{ transformOrigin: "130px 110px" }}
-            className="octo-arm"
-          ></path>
-          <path
-            d="M113.2 114.3s3.6 1.6 4.7.6l15-13.7c3-2.4 6-3 8.2-2.7-8-11.2-14-25 3-41 4.7-4.4 10.6-6.4 16.2-6.4.6-1.6 3.6-7.3 11.8-10.7 0 0 4.5 2.7 6.8 16.5 4.3 2.7 8.3 6 12 9.8 3.3 3.5 6.7 8 8.6 12.3 14 3 16.8 8 16.8 8-3.4 8-9.4 11-11.4 11 0 5.8-2.3 11-7.5 15.5-16.4 16-30 9-40 .2 0 3-1 7-5.2 11l-13.3 11c-1 1 .5 5.3.8 5z"
-            fill="currentColor"
-            className="octo-body"
-          ></path>
-        </svg>
-      </a>
-
+      <ToastContainer />
       <div className="h-4 w-full bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500"></div>
       <div className="flex flex-row">
         <div className="px-4 py-2">
@@ -286,4 +252,5 @@ const Landing = () => {
     </>
   );
 };
+
 export default Landing;
