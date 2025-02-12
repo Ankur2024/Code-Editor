@@ -61,6 +61,7 @@ const Landing = () => {
   console.log("API Host:", apiHost);
   console.log("API Key:", apiKey);
 
+
   const enterPress = useKeyPress("Enter");
   const ctrlPress = useKeyPress("Control");
 
@@ -98,7 +99,7 @@ const Landing = () => {
     console.log("Form Data:", formData);
 
     axios
-      .post(`${apiUrl}/submissions`, formData, {
+      .post(apiUrl, formData, {
         params: { base64_encoded: "true", fields: "*" },
         headers: {
           "content-type": "application/json",
@@ -108,11 +109,7 @@ const Landing = () => {
       })
       .then((response) => {
         console.log("Compile Response:", response);
-        if (response.data.token) {
-          checkStatus(response.data.token);
-        } else {
-          throw new Error("Token not received from the API");
-        }
+        checkStatus(response.data.token);
       })
       .catch((err) => {
         const status = err.response?.status;
@@ -126,7 +123,7 @@ const Landing = () => {
             10000
           );
         } else {
-          showErrorToast(`Compilation failed: ${error.message || "Please check your code"}`);
+          showErrorToast("Compilation failed! Please check your code.");
         }
         setProcessing(false);
       });
@@ -135,7 +132,7 @@ const Landing = () => {
   const checkStatus = async (token) => {
     console.log("Checking Status for Token:", token);
     try {
-      const response = await axios.get(`${apiUrl}/submissions/${token}`, {
+      const response = await axios.get(`${apiUrl}/${token}`, {
         params: { base64_encoded: "true", fields: "*" },
         headers: {
           "X-RapidAPI-Host": apiHost,
@@ -160,10 +157,10 @@ const Landing = () => {
           showErrorToast("Compilation failed!");
         }
       }
-    } catch (err) {
-      console.error("Status Check Error:", err);
+    } catch (error) {
+      console.error("Error Checking Status:", error);
       setProcessing(false);
-      showErrorToast("Error checking submission status");
+      showErrorToast("An error occurred while checking the status.");
     }
   };
 
